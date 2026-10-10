@@ -1,0 +1,50 @@
+#!/usr/bin/python3
+"""Client for the phantom controller.
+
+session-start / session-end always exit 0: Sunshine aborts a launch when a
+prep-cmd fails, and a missing phantom only means streaming the real screen.
+"""
+import os
+import socket
+import sys
+from pathlib import Path
+
+SOCKET = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "sunshine-phantom.sock"
+MODE_FILE = Path.home() / ".config/sunshine-ipad-virtual/mode"
+MODES = ("primary", "extend")
+
+
+def send(command, timeout, wait=True):
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+        client.settimeout(timeout)
+        client.connect(str(SOCKET))
+        client.sendall(command.encode() + b"\n")
+        if not wait:
+            return "queued"
+        return client.makefile().readline().strip()
+
+
+def main(argv):
+    command = argv[1] if len(argv) > 1 else "status"
+    if command == "mode":
+        current = MODE_FILE.read_text().strip() if MODE_FILE.exists() else "primary"
+        new = argv[2] if len(argv) > 2 else MODES[1 - MODES.index(current if current in MODES else "primary")]
+        if new not in MODES:
+            print("用法: sunshine-ipad-mode [primary|extend]（不带参数=切换）", file=sys.stderr)
+            return 2
+        MODE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        MODE_FILE.write_text(new + "\n")
+        print(f"模式: {new}（{'iPad 为唯一屏幕，实体屏关闭' if new == 'primary' else 'iPad 为扩展屏，在实体屏下方'}）")
+        command = "reapply"
+    try:
+        # Sunshine waits for the undo inside terminate() while already reporting the host as free; a launch
+        # in that window runs terminate() again concurrently and crashes it. So session-end only queues the
+        # command (the controller handles queued commands in order) and never waits for a busy controller.
+        print(send(command, timeout=25 if command == "session-start" else 15, wait=command != "session-end"))
+    except OSError as error:
+        print(f"controller unreachable: {error}", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+
+# 开发过程记录（计划、台账）只留在本地
+docs/superpowers/
+.superpowers/

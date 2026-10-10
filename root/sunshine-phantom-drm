@@ -1,0 +1,31 @@
+#!/bin/bash
+# Plug/unplug the phantom iPad display on Intel HDMI-A-1 (no physical sink behind it).
+# Runs as root through a NOPASSWD sudoers rule, so it takes no paths or names:
+# connector, sysfs files and EDID firmware name are fixed here.
+set -euo pipefail
+
+CONN=HDMI-A-1
+PARAM=/sys/module/drm/parameters/edid_firmware
+FW=edid/sunshine-ipad-air-13.bin
+
+# Card numbering can change between boots; pick the i915 card's connector.
+SYSFS=""
+for d in /sys/class/drm/card*-"$CONN"; do
+  [ "$(basename "$(readlink -f "${d%-"$CONN"}/device/driver")")" = i915 ] && SYSFS=$d
+done
+[ -n "$SYSFS" ] || { echo "no i915 $CONN connector" >&2; exit 1; }
+
+case "${1:-}" in
+  on)
+    [ -f "/lib/firmware/$FW" ] || { echo "missing /lib/firmware/$FW" >&2; exit 1; }
+    printf '%s' "$CONN:$FW" > "$PARAM"
+    echo on > "$SYSFS/status"
+    ;;
+  off)
+    echo detect > "$SYSFS/status"
+    printf '\0' > "$PARAM"
+    ;;
+  status) ;;
+  *) echo "usage: $0 on|off|status" >&2; exit 2 ;;
+esac
+echo "status=$(cat "$SYSFS/status") enabled=$(cat "$SYSFS/enabled")"

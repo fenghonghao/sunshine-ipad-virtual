@@ -1,0 +1,15 @@
+[Unit]
+Description=Phantom iPad display controller for Sunshine
+PartOf=graphical-session.target
+After=graphical-session.target
+Before=app-dev.lizardbyte.app.Sunshine.service
+
+[Service]
+ExecStart=/usr/bin/python3 %h/.local/share/sunshine-ipad-virtual/phantom/controller.py
+Restart=on-failure
+RestartSec=2
+
+[Install]
+# Started whenever Sunshine starts (Before= above has it listening first). No PartOf=Sunshine: stopping
+# the controller together with Sunshine would drop the session-end Sunshine queues on its way out.
+WantedBy=app-dev.lizardbyte.app.Sunshine.service

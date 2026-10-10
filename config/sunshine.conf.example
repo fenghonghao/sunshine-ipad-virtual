@@ -1,0 +1,5 @@
+capture = kms
+encoder = vaapi
+adapter_name = /dev/dri/by-path/pci-0000:00:02.0-render
+output_name = HDMI-A-1
+global_prep_cmd = [{"do":"/home/YOUR_USER/.local/share/sunshine-ipad-virtual/bin/phantomctl session-start","undo":"/home/YOUR_USER/.local/share/sunshine-ipad-virtual/bin/phantomctl session-end","elevated":false}]
